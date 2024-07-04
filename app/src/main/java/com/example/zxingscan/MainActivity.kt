@@ -1,6 +1,9 @@
 package com.example.zxingscan
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -28,10 +31,20 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.example.zxingscan.ui.theme.ZxingScanTheme
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 
 class MainActivity : ComponentActivity() {
 
-    private var scannedText = mutableStateOf("test text") // Will change with each scan
+    private val scanLauncher = registerForActivityResult(ScanContract()) { result ->
+        if (result.contents == null) {
+            Toast.makeText(this, "No result", Toast.LENGTH_SHORT).show()
+        } else {
+            scannedText.value = result.contents
+        }
+    }
+
+    private var scannedText = mutableStateOf("") // Will change with each scan
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -70,7 +83,7 @@ class MainActivity : ComponentActivity() {
                 modifier = Modifier
                     .padding(16.dp)
                     .clickable {
-                        // processing a link click
+                        openLink(text)
                     }
             )
         }
@@ -78,11 +91,11 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     fun ScanButton() {
-            Button(onClick = {
-                // processing a button click
-            }) {
-                Text(text = "Scan")
-            }
+        Button(onClick = {
+            scan()
+        }) {
+            Text(text = "Scan")
+        }
     }
 
     private fun createAnnotatedLinkText(text: String): AnnotatedString {
@@ -97,5 +110,25 @@ class MainActivity : ComponentActivity() {
             )
             pop()
         }
+    }
+
+    private fun scan() {
+        val options = ScanOptions()
+        options.setDesiredBarcodeFormats(ScanOptions.QR_CODE) // type code
+        options.setPrompt("Scan a QR code")
+        options.setCameraId(0) // Use a specific camera of the device
+        options.setBeepEnabled(false)
+        options.setBarcodeImageEnabled(true)
+        scanLauncher.launch(options)
+    }
+
+    private fun openLink(text: String) {
+        val uri = if (text.startsWith("http://") || text.startsWith("https://")) {
+            Uri.parse(text)
+        } else {
+            Uri.parse("https://www.google.com/search?q=$text")
+        }
+        val intent = Intent(Intent.ACTION_VIEW, uri)
+        startActivity(intent)
     }
 }
